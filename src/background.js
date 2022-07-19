@@ -22,7 +22,13 @@ let hosts = {}
 chrome.webRequest.onBeforeRequest.addListener(function (details) {
 	const url = new URL(details.url)
 
-	if(url && url.host && url.host !== 'resolver.decentraweb.org' && ['http:', 'https:'].includes(url.protocol)){
+	if(
+		url
+		&& url.host
+		&& url.host !== 'resolver.decentraweb.org'
+		&& ['http:', 'https:'].includes(url.protocol)
+		&& ! checkIfValidIP(url.host)
+	){
 
 		if(! hosts[url.host] && ! sent[url.host]){
 			sent[url.host] = true;
@@ -59,15 +65,26 @@ function resolveProxy(){
 			data: getPacScript()
 		}
 	};
-
+	console.log(getPacScript())
 	chrome.proxy.settings.set({value: config, scope: 'regular'},function() {});
 }
+
+function checkIfValidIP(str) {
+	// Regular expression to check if string is a IP address
+	const regexExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
+
+	return regexExp.test(str);
+}
+
 
 function  getPacScript() {
 	var script = ''
 	let j = 0;
 	Object.keys(hosts).forEach((host, i) => {
-		if(hosts[host].provider === 'dweb'){
+		if([
+			'dweb',
+			'ens',
+		].includes(hosts[host].provider)){
 			script += (j === 0 ? 'if' : 'else if')
 			if (host.indexOf('/') > 0) {
 				script += '(shExpMatch(url, "http://' + host + '") || shExpMatch(url, "https://' + host + '"))'
