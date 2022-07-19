@@ -34,16 +34,16 @@ chrome.webRequest.onBeforeRequest.addListener(function (details) {
 					// Get the ip address returned from the DNS proxy server.
 					let response = JSON.parse(xhr.responseText);
 
-					if(response && response.answers && response.answers.length){
+					if(response && response.result && response.result.answers && response.result.answers.length){
 						//	sessionStorage.setItem(response.answers[0].name, response.answers[0].data)
-						hosts[response.answers[0].name] = response.answers[0].data;
+						hosts[response.result.answers[0].name] = {ip: response.result.answers[0].data, provider: response.provider};
 					}
 				}
 			}
 			xhr.send();
 		}
 
-		if(! ! hosts[url.host]){
+		if(! hosts[url.host]){
 			sleep(2000, url.host);
 		}
 
@@ -65,16 +65,21 @@ function resolveProxy(){
 
 function  getPacScript() {
 	var script = ''
+	let j = 0;
 	Object.keys(hosts).forEach((host, i) => {
-		script += (i === 0 ? 'if' : 'else if')
-		if (host.indexOf('/') > 0) {
-			script += '(shExpMatch(url, "http://' + host + '") || shExpMatch(url, "https://' + host + '"))'
-		} else if (host.indexOf('*') > -1) {
-			script += '(shExpMatch(host, "' + host + '"))'
-		} else {
-			script += '(host == "' + host + '")'
+		if(hosts[host].provider === 'dweb'){
+			script += (j === 0 ? 'if' : 'else if')
+			if (host.indexOf('/') > 0) {
+				script += '(shExpMatch(url, "http://' + host + '") || shExpMatch(url, "https://' + host + '"))'
+			} else if (host.indexOf('*') > -1) {
+				script += '(shExpMatch(host, "' + host + '"))'
+			} else {
+				script += '(host == "' + host + '")'
+			}
+			script += '{return "PROXY ' + hosts[host].ip + '; DIRECT";}\n'
+
+			j++;
 		}
-		script += '{return "PROXY ' + hosts[host] + '; DIRECT";}\n'
 	})
 	if (script) script += 'else { return "DIRECT"; }'
 
